@@ -1,9 +1,11 @@
 from duration_model import Duration_Graph
 from acoustic_model import Acoustic_Graph
 from hyperparams import hyperparams
+import time
 hp = hyperparams()
 def main():
     mode = 'train'
+    print('Start in ' + time.strftime('%Y-%m-%d %H:%M:%S', time.localtime()))
     if hp.TRAIN_GRAPH.lower() is 'duration':
         dur_train_graph = Duration_Graph(mode=mode)
         print(f'Duration {mode} Graph loaded done.')
