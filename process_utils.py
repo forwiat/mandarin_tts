@@ -114,6 +114,20 @@ def pattern_matching_continuous(full_label, continuous_dict):
         lab_continuous_vector[0, i] = continuous_value
     return lab_continuous_vector
 
+def extract_coarse_coding_and_postion_features(ori_coarse_coding_features, frame_number):
+    # get frame postion features
+    # be used in acoustic data
+    frame = int(frame_number)
+    features_matrix = np.zeros((frame, hp.COARSE_CODE_DIM + hp.FRAME_POSITION_DIM))
+    # [frame, cc_dim + fp_dim] --> [frame, 4]
+    for i in range(frame):
+        rel_index = int((200 / float(frame)) * i)
+        features_matrix[i, 0] = ori_coarse_coding_features[0, 300 + rel_index]
+        features_matrix[i, 1] = ori_coarse_coding_features[1, 200 + rel_index]
+        features_matrix[i, 2] = ori_coarse_coding_features[2, 100 + rel_index]
+        features_matrix[i, 3] = float(frame)
+    return features_matrix
+
 def match_qs(labels, dimension: int, frame_level=False):
     '''
     :param labels: String list. MTTS handled labels.
@@ -122,19 +136,6 @@ def match_qs(labels, dimension: int, frame_level=False):
     :return: Numpy.array. With shape [N, D].
     '''
 
-    def _extract_coarse_coding_and_postion_features(ori_coarse_coding_features, frame_number):
-        # get frame postion features
-        # be used in acoustic data
-        frame = int(frame_number)
-        features_matrix = np.zeros((frame, hp.COARSE_CODE_DIM + hp.FRAME_POSITION_DIM))
-        # [frame, cc_dim + fp_dim] --> [frame, 4]
-        for i in range(frame):
-            rel_index = int((200 / float(frame)) * i)
-            features_matrix[i, 0] = ori_coarse_coding_features[0, 300 + rel_index]
-            features_matrix[i, 1] = ori_coarse_coding_features[1, 200 + rel_index]
-            features_matrix[i, 2] = ori_coarse_coding_features[2, 100 + rel_index]
-            features_matrix[i, 3] = float(frame)
-        return features_matrix
     label_features_matrix = np.zeros((1, dimension))
     for line in labels:
         line = line.strip()
@@ -149,7 +150,7 @@ def match_qs(labels, dimension: int, frame_level=False):
         label_continuous_vector = pattern_matching_continuous(full_label, continuous_dict)
         label_vector = np.concatenate((label_binary_vector, label_continuous_vector), axis=1)
         if frame_level:
-            coarse_coding_features_matrix = _extract_coarse_coding_and_postion_features(ori_coarse_coding_features,
+            coarse_coding_features_matrix = extract_coarse_coding_and_postion_features(ori_coarse_coding_features,
                                                                                        frame_number)
             # coarse_coding_features_matrix dimension is [frame_number, 4]
             label_frame_level_metrix = np.tile(label_vector, (frame_number, 1))
@@ -371,3 +372,17 @@ def mvn(inputs, mean_vec, std_vec, dimension: int):
     std_matrix = np.tile(std_vec, (time, 1))
     out_data = (inputs - mean_matrix) / std_matrix
     return out_data
+
+def demvn(inputs, mean_vec, std_vec, dimension: int):
+    '''
+    :param inputs: Numpy.array. [T, D].
+    :param mean_vec: Numpy.array. [1, D].
+    :param std_vec: Numpy.array. [1, D].
+    :param dimension: An integer. Data dimension.
+    :return: Numpy.array. [T, D].
+    '''
+    time = inputs.shape[0]
+    mean_matrix = np.tile(mean_vec, (time, 1))
+    std_mtrix = np.tile(std_vec, (time, 1))
+    outputs = inputs * std_mtrix + mean_matrix
+    return outputs
