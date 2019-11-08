@@ -5,7 +5,7 @@ import librosa
 from duration_model import Duration_Graph
 from acoustic_model import Acoustic_Graph
 from MTTS.mandarin_frontend import txt2label
-from process_utils import match_qs, mmn, read_file, demvn, ori_coarse_coding_features, extract_coarse_coding_and_postion_features
+from utils import match_qs, mmn, read_file, demvn, ori_coarse_coding_features, extract_coarse_coding_and_postion_features
 from hyperparams import hyperparams
 hp = hyperparams()
 import argparse
@@ -68,11 +68,11 @@ def handle(sent, fpath):
     syn_mean_vec, syn_std_vec = get_norm_vec(os.path.join(hp.DATA_DIR, 'syn_meanstd_vec.npy'), hp.ACOUSTIC_DIM)
     acoustic_features = demvn(acoustic, syn_mean_vec, syn_std_vec, dimension=hp.ACOUSTIC_DIM)
     index = 0
-    f0_features = acoustic_features[:, index: hp.F0_DIM]
+    f0_features = acoustic_features[:, index: index + hp.F0_DIM]
     index += hp.F0_DIM * 3
-    coded_sp_features = acoustic_features[:, index: hp.CODED_SP_DIM]
+    coded_sp_features = acoustic_features[:, index: index + hp.CODED_SP_DIM]
     index += hp.CODED_SP_DIM * 3
-    coded_ap_features = acoustic_features[:, index: hp.CODED_AP_DIM]
+    coded_ap_features = acoustic_features[:, index: index + hp.CODED_AP_DIM]
     decoded_sp_features = pyworld.decode_spectral_envelope(coded_sp_features, hp.SR, fft_size=hp.N_FFT)
     decoded_ap_features = pyworld.decode_aperiodicity(coded_ap_features, hp.SR, fft_size=hp.N_FFT)
     new_y = pyworld.synthesize(f0_features, decoded_sp_features, decoded_ap_features, hp.SR)
@@ -82,10 +82,10 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--sentence', '-s', type=str, help='Synthesize content. Only supported chinese.')
     parser.add_argument('--path', '-f', type=str, help='Synthesized file path.')
-    parser.set_defaults(sentense=None)
+    parser.set_defaults(sentence=None)
     parser.set_defaults(path=None)
     args = parser.parse_args()
-    sent = args.sentense
+    sent = args.sentence
     path = args.path
     if sent is None or only_chinese(sent) is False:
         raise Exception('Input sentence is illegal. Only supported to chinese. Please check.')

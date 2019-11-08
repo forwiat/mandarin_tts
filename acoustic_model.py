@@ -41,15 +41,15 @@ class Acoustic_Graph:
                     raise Exception(f'Loading trained model failed or No trainded model in {hp.SYN_MODEL_DIR}. Please check.')
 
     def build_model(self):
+        if self.mode in ['train', 'test']:
+            self.x, self.y = get_next_batch(self.dir, mode=self.mode, type='acoustic')
+        else:
+            self.x = tf.placeholder(shape=[None, hp.SYN_IN_DIM], dtype=tf.float32, name='syn_lab')
         self.global_steps = tf.get_variable('global_steps', initializer=0, dtype=tf.int32, trainable=False)
         self.lr = tf.train.exponential_decay(hp.SYN_LR,
                                              decay_steps=hp.SYN_LR_DECAY_STEPS,
                                              decay_rate=hp.SYN_LR_DECAY_RATE)
         self.optimizer = tf.train.AdamOptimizer(learning_rate=self.lr)
-        if self.mode in ['train', 'test']:
-            self.x, self.y = get_next_batch(self.dir, mode=self.mode, type='acoustic')
-        else:
-            self.x = tf.placeholder(shape=[None, hp.SYN_IN_DIM], dtype=tf.float32, name='syn_lab')
         self.y_hat = acoustic_model(self.x, size=self.out_dim, scope=self.scope_name, reuse=self.reuse)
         self.loss = tf.reduce_mean(tf.square(self.y_hat - self.y))
         update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)

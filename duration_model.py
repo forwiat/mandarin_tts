@@ -33,8 +33,14 @@ class Duration_Graph:
                 self.saver.restore(self.sess, hp.DUR_MODEL_DIR)
                 self.loaded = True
             finally:
-                if self.loaded is False:
-                    print(f'Loading trained model failed or No trainded model in {hp.DUR_MODEL_DIR}. Start training with initializer ...')
+                if self.loaded is True:
+                    print('Successfully loaded.')
+                elif self.loaded is False and self.mode is 'train':
+                    print(
+                        f'Loading trained model failed or No trainded model in {hp.DUR_MODEL_DIR}. Start training with initializer ...')
+                elif self.loaded is False and self.mode in ['test', 'infer']:
+                    raise Exception(
+                        f'Loading trained model failed or No trainded model in {hp.DUR_MODEL_DIR}. Please check.')
 
     def build_model(self):
         self.global_steps = tf.get_variable('global_steps', initializer=0, dtype=tf.int32, trainable=False)

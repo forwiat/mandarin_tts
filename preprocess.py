@@ -6,8 +6,9 @@ import pyworld
 import librosa
 import tensorflow as tf
 from tqdm import tqdm
+import multiprocessing as mp
 from hyperparams import hyperparams
-from process_utils import write_file, read_file, match_qs, remove_sil, get_dur, get_syn, mmn, mvn
+from utils import write_file, read_file, match_qs, remove_sil, get_dur, get_syn, mmn, mvn
 hp = hyperparams()
 
 def check():
@@ -22,7 +23,7 @@ def check():
     for i in wav_paths:
         fname = os.path.basename(i)[:-4]
         if fname not in fname_dic.keys():
-            raise Exception(f'{fname} is not in {hp.LABELS_DIR}, which results to files mismatch. Please check.')
+            raise Exception(f'{fname} is not in {hp.LABELS_DIR}, which results to mismatch. Please check.')
     if os.path.isdir(hp.WAVS_DIR) is False or os.path.isdir(hp.LABELS_DIR) is False:
         raise Exception(f'{hp.WAVS_DIR} is not created or not a directory. Please check.')
     if os.path.isdir(hp.DATA_DIR) is False:
@@ -33,10 +34,18 @@ def check():
         os.makedirs(hp.SYN_TF_DIR)
     if os.path.isdir(hp.TEMP_DIR) is False:
         os.makedirs(hp.TEMP_DIR)
+    if os.path.isdir(hp.DUR_MODEL_DIR) is False:
+        os.makedirs(hp.DUR_MODEL_DIR)
+    if os.path.isdir(hp.DUR_LOG_DIR) is False:
+        os.makedirs(hp.DUR_LOG_DIR)
+    if os.path.isdir(hp.SYN_MODEL_DIR) is False:
+        os.makedirs(hp.SYN_MODEL_DIR)
+    if os.path.isdir(hp.SYN_LOG_DIR) is False:
+        os.makedirs(hp.SYN_LOG_DIR)
     return label_paths, wav_paths
 
 def get_features(fpath: str):
-    y, _ = librosa.load(fpath, sr=hp.SR)
+    y, _ = librosa.load(fpath, sr=hp.SR, dtype=np.float64)
     f0, timeaxis = pyworld.harvest(y, hp.SR, f0_floor=71.0, f0_ceil=500.0)
     sp = pyworld.cheaptrick(y, f0, timeaxis, hp.SR, fft_size=hp.N_FFT)
     ap = pyworld.d4c(y, f0, timeaxis, hp.SR, fft_size=hp.N_FFT)
@@ -176,7 +185,13 @@ def normalise(label_paths):
         nor_synout_feas = mvn(synout_feas, syn_mean_vec, syn_std_vec, dimension=hp.ACOUSTIC_DIM)
         write_file(synout_temp_file, nor_synout_feas)
 
-def write_tf(label_paths, id):
+def write_tf(args):
+    '''
+    args:
+    label_paths: File path list.
+    id: Process id.
+    '''
+    (label_paths, id) = args
     dur_train_writer = tf.python_io.TFRecordWriter(os.path.join(hp.DUR_TF_DIR, f'{id}_dur_train.tfrecord'))
     dur_test_writer = tf.python_io.TFRecordWriter(os.path.join(hp.DUR_TF_DIR, f'{id}_dur_test.tfrecord'))
     syn_train_writer = tf.python_io.TFRecordWriter(os.path.join(hp.SYN_TF_DIR, f'{id}_syn_train.tfrecord'))
@@ -220,16 +235,49 @@ def write_tf(label_paths, id):
 
 def main():
     label_paths, _ = check()
-    print('#----------------------1. Handling text-------------------------#')
-    handle_text(label_paths)
-    print('#----------------------2. Handling feature----------------------#')
-    handle_feature(label_paths)
-    print('#----------------------3. Normalizing---------------------------#')
-    get_normalise_vector(label_paths)
-    normalise(label_paths)
-    print('#----------------------4. Writing TFRecord----------------------#')
-    write_tf(label_paths, 0)
-    print('#----------------------5. End Done------------------------------#')
+    if hp.PRE_MULTI is False:
+        print('#----------------------1. Handling text-------------------------#')
+        handle_text(label_paths)
+        print('#----------------------2. Handling feature----------------------#')
+        handle_feature(label_paths)
+        print('#----------------------3. Normalizing---------------------------#')
+        get_normalise_vector(label_paths)
+        normalise(label_paths)
+        print('#----------------------4. Writing TFRecord----------------------#')
+        write_tf((label_paths, 0))
+        os.system(f'rm -rf {hp.TEMP_DIR}')
+        print('#----------------------5. End Done------------------------------#')
+    else:
+        print('#----------------------1. Handling text-------------------------#')
+        num_spilts = mp.cpu_count()
+        num_spilts //= 2
+        splits = [label_paths[i::num_spilts]
+                  for i in range(num_spilts)]
+        pool = mp.Pool(num_spilts)
+        pool.map(handle_text, splits)
+        pool.close()
+        pool.join()
+        print('#----------------------2. Handling feature----------------------#')
+        pool = mp.Pool(num_spilts)
+        pool.map(handle_feature, splits)
+        pool.close()
+        pool.join()
+        print('#----------------------3. Normalizing---------------------------#')
+        get_normalise_vector(label_paths)
+        pool = mp.Pool(num_spilts)
+        pool.map(normalise, splits)
+        pool.close()
+        pool.join()
+        print('#----------------------4. Writing TFRecord----------------------#')
+        pool = mp.Pool(num_spilts)
+        splits = [(label_paths[i::num_spilts],
+                   i)
+                  for i in range(num_spilts)]
+        pool.map(write_tf, splits)
+        pool.close()
+        pool.join()
+        os.system(f'rm -rf {hp.TEMP_DIR}')
+        print('#----------------------5. End Done------------------------------#')
 
 if __name__ == '__main__':
     main()
