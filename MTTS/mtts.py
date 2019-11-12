@@ -2,8 +2,8 @@ import os
 import re
 import logging
 from pypinyin import pinyin, Style, load_phrases_dict
-import textgrid as tg
-from mandarin_frontend import txt2label
+import MTTS.textgrid as tg
+from MTTS.mandarin_frontend import txt2label
 
 consonant = [
     'b', 'p', 'm', 'f', 'd', 't', 'n', 'l', 'g', 'k', 'h', 'j', 'q', 'x', 'zh',

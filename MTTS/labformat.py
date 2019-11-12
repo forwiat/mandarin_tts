@@ -3,8 +3,8 @@ from __future__ import unicode_literals
 import re
 import copy
 from sys import exit
-from txt2pinyin import txt2pinyin
-from labcnp import LabNode, LabGenerator
+from MTTS.txt2pinyin import txt2pinyin
+from MTTS.labcnp import LabNode, LabGenerator
 
 rhythm_map = ['ph', 'syl', '#0', '#1', '#3', '#4']
 

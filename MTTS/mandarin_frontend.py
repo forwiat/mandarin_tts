@@ -6,9 +6,9 @@ from __future__ import unicode_literals
 import re
 import os
 from jieba import posseg
-from labcnp import LabGenerator
-from labformat import tree
-from txt2pinyin import txt2pinyin
+from MTTS.labcnp import LabGenerator
+from MTTS.labformat import tree
+from MTTS.txt2pinyin import txt2pinyin
 
 
 def _adjust(prosody_txt):
