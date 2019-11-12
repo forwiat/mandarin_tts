@@ -34,14 +34,6 @@ def check():
         os.makedirs(hp.SYN_TF_DIR)
     if os.path.isdir(hp.TEMP_DIR) is False:
         os.makedirs(hp.TEMP_DIR)
-    if os.path.isdir(hp.DUR_MODEL_DIR) is False:
-        os.makedirs(hp.DUR_MODEL_DIR)
-    if os.path.isdir(hp.DUR_LOG_DIR) is False:
-        os.makedirs(hp.DUR_LOG_DIR)
-    if os.path.isdir(hp.SYN_MODEL_DIR) is False:
-        os.makedirs(hp.SYN_MODEL_DIR)
-    if os.path.isdir(hp.SYN_LOG_DIR) is False:
-        os.makedirs(hp.SYN_LOG_DIR)
     return label_paths, wav_paths
 
 def get_features(fpath: str):
@@ -62,7 +54,7 @@ def get_minmax_vector(files: list, dimension: int):
     length = len(files)
     min_matrix = np.zeros((length, dimension))
     max_matrix = np.zeros((length, dimension))
-    for i in range(length):
+    for i in tqdm(range(length)):
         data = read_file(files[i], dimension)
         temp_min = np.amin(data, axis=0)
         temp_max = np.amax(data, axis=0)
@@ -84,7 +76,7 @@ def get_meanstd_vector(files, dimension):
     mean_vector = np.zeros((1, dimension))
     std_vector = np.zeros((1, dimension))
     times = 0
-    for i in range(length):
+    for i in tqdm(range(length)):
         features = read_file(files [i], dimension)
         time = features.shape[0]
         # duration : phone number
@@ -111,10 +103,10 @@ def handle_text(label_paths):
         lab = codecs.open(label_paths[i], 'r').readlines()
         dur_lab = match_qs(lab, dimension=hp.DUR_LAB_DIM, frame_level=False)
         syn_lab = match_qs(lab, dimension=hp.SYN_LAB_DIM, frame_level=True)
-        nosil_dur_lab = remove_sil(dur_lab, labels=lab, frame_level=False)
-        nosil_syn_lab = remove_sil(syn_lab, labels=lab, frame_level=True)
-        write_file(os.path.join(hp.TEMP_DIR, fname_noexc + '_in.dur'), nosil_dur_lab)
-        write_file(os.path.join(hp.TEMP_DIR, fname_noexc + '_in.syn'), nosil_syn_lab)
+        #nosil_dur_lab = remove_sil(dur_lab, labels=lab, frame_level=False)
+        #nosil_syn_lab = remove_sil(syn_lab, labels=lab, frame_level=True)
+        write_file(os.path.join(hp.TEMP_DIR, fname_noexc + '_in.dur'), dur_lab)
+        write_file(os.path.join(hp.TEMP_DIR, fname_noexc + '_in.syn'), syn_lab)
 
 def handle_feature(label_paths):
     for i in tqdm(range(len(label_paths))):
@@ -122,30 +114,35 @@ def handle_feature(label_paths):
         wav_path = os.path.join(hp.WAVS_DIR, fname_noexc + '.wav')
         lab = codecs.open(label_paths[i], 'r').readlines()
         dur_feas = get_dur(lab, dimension=1)
-        nosil_dur_feas = remove_sil(dur_feas, labels=lab, frame_level=False)
-        write_file(os.path.join(hp.TEMP_DIR, fname_noexc + '_out.dur'), nosil_dur_feas)
+        #nosil_dur_feas = remove_sil(dur_feas, labels=lab, frame_level=False)
+        write_file(os.path.join(hp.TEMP_DIR, fname_noexc + '_out.dur'), dur_feas)
         f0, coded_sp, coded_ap = get_features(wav_path)
         syn_feas = get_syn(f0, coded_sp, coded_ap)
-        nosil_syn_feas = remove_sil(syn_feas, labels=lab, frame_level=True)
-        write_file(os.path.join(hp.TEMP_DIR, fname_noexc + '_out.syn'), nosil_syn_feas)
+        #nosil_syn_feas = remove_sil(syn_feas, labels=lab, frame_level=True)
+        write_file(os.path.join(hp.TEMP_DIR, fname_noexc + '_out.syn'), syn_feas)
 
 def get_normalise_vector(label_paths):
+    print('\t#---------------3.1 Get dur_min_max_vector---------------#\t')
     dur_in_files = [os.path.join(hp.TEMP_DIR, os.path.basename(i)[:-4] + '_in.dur') for i in label_paths]
     dur_min_vec, dur_max_vec = get_minmax_vector(dur_in_files, hp.DUR_LAB_DIM)
     dur_mm_vec = np.concatenate((dur_min_vec, dur_max_vec), axis=0)
     write_file(os.path.join(hp.DATA_DIR, 'dur_minmax_vec.npy'), dur_mm_vec)
+    print('\t#---------------3.2 Get dur_mean_std_vector--------------#\t')
     dur_out_files = [os.path.join(hp.TEMP_DIR, os.path.basename(i)[:-4] + '_out.dur') for i in label_paths]
     dur_mean_vec, dur_std_vec = get_meanstd_vector(dur_out_files, hp.DURATION_DIM)
     dur_ms_vec = np.concatenate((dur_mean_vec, dur_std_vec), axis=0)
     write_file(os.path.join(hp.DATA_DIR, 'dur_meanstd_vec.npy'), dur_ms_vec)
+    print('\t#---------------3.3 Get syn_min_max_vector---------------#\t')
     syn_in_files = [os.path.join(hp.TEMP_DIR, os.path.basename(i)[:-4] + '_in.syn') for i in label_paths]
     syn_min_vec, syn_max_vec = get_minmax_vector(syn_in_files, hp.SYN_LAB_DIM)
     syn_mm_vec = np.concatenate((syn_min_vec, syn_max_vec), axis=0)
     write_file(os.path.join(hp.DATA_DIR, 'syn_minmax_vec.npy'), syn_mm_vec)
+    print('\t#---------------3.4 Get syn_mean_std_vector--------------#\t')
     syn_out_files = [os.path.join(hp.TEMP_DIR, os.path.basename(i)[:-4] + '_out.syn') for i in label_paths]
     syn_mean_vec, syn_std_vec = get_meanstd_vector(syn_out_files, hp.ACOUSTIC_DIM)
     syn_ms_vec = np.concatenate((syn_mean_vec, syn_std_vec), axis=0)
     write_file(os.path.join(hp.DATA_DIR, 'syn_meanstd_vec.npy'), syn_ms_vec)
+    print('\t#---------------3.5 Done---------------------------------#\t')
 
 def normalise(label_paths):
     # ------------Duration normalise vector------------------#
@@ -192,6 +189,7 @@ def write_tf(args):
     id: Process id.
     '''
     (label_paths, id) = args
+    global files_cnt
     dur_train_writer = tf.python_io.TFRecordWriter(os.path.join(hp.DUR_TF_DIR, f'{id}_dur_train.tfrecord'))
     dur_test_writer = tf.python_io.TFRecordWriter(os.path.join(hp.DUR_TF_DIR, f'{id}_dur_test.tfrecord'))
     syn_train_writer = tf.python_io.TFRecordWriter(os.path.join(hp.SYN_TF_DIR, f'{id}_syn_train.tfrecord'))
@@ -205,6 +203,9 @@ def write_tf(args):
         if durin.shape[0] != durout.shape[0]:
             raise Exception('Duration data 1st dimension of inputs and outputs mismatched. Please check.')
         if synin.shape[0] != synout.shape[0]:
+            diff = synout.shape[0] - synin.shape[0]
+            synout = synout[diff:, :]
+        if synin.shape[0] != synout.shape[0]:
             raise Exception('Acoustic data 1st dimension of inputs and outputs mismatched. Please check.')
         dur_features = {}
         syn_features = {}
@@ -213,27 +214,30 @@ def write_tf(args):
         dur_features['y'] = tf.train.Feature(float_list=tf.train.FloatList(value=durout.reshape(-1)))
         dur_features['y_shape'] = tf.train.Feature(int64_list=tf.train.Int64List(value=durout.shape))
         syn_features['x'] = tf.train.Feature(float_list=tf.train.FloatList(value=synin.reshape(-1)))
-        syn_features['x_shape'] = tf.train.Feature(int64_list=tf.train.Int64List(value=durin.shape))
+        syn_features['x_shape'] = tf.train.Feature(int64_list=tf.train.Int64List(value=synin.shape))
         syn_features['y'] = tf.train.Feature(float_list=tf.train.FloatList(value=synout.reshape(-1)))
         syn_features['y_shape'] = tf.train.Feature(int64_list=tf.train.Int64List(value=synout.shape))
-        dur_tf_features = tf.train.Feature(feature=dur_features)
-        syn_tf_features = tf.train.Feature(feature=syn_features)
+        dur_tf_features = tf.train.Features(feature=dur_features)
+        syn_tf_features = tf.train.Features(feature=syn_features)
         dur_tf_example = tf.train.Example(features=dur_tf_features)
         syn_tf_example = tf.train.Example(features=syn_tf_features)
         dur_tf_serialized = dur_tf_example.SerializeToString()
         syn_tf_serialized = syn_tf_example.SerializeToString()
-        if i <= hp.TRAIN_SIZE:
+        if files_cnt <= hp.TRAIN_SIZE:
             dur_train_writer.write(dur_tf_serialized)
             syn_train_writer.write(syn_tf_serialized)
         else:
             dur_test_writer.write(dur_tf_serialized)
             syn_test_writer.write(syn_tf_serialized)
+        files_cnt += 1
     dur_train_writer.close()
     dur_test_writer.close()
     syn_train_writer.close()
     syn_test_writer.close()
 
 def main():
+    global files_cnt
+    files_cnt = 0
     label_paths, _ = check()
     if hp.PRE_MULTI is False:
         print('#----------------------1. Handling text-------------------------#')

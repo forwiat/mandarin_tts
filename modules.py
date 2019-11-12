@@ -11,7 +11,7 @@ def get_next_batch(dir: str, mode='train', type='duration'):
     :return: Batched tensor.
     '''
     if mode not in ['train', 'test']:
-        raise Exception(f'No supported mode {mode}. Please check.')
+        raise Exception(f'#-------------------------No supported mode {mode}. Please check.-------------------------#')
     def _parse_function(proto):
         parse_dics = {
             'x': tf.VarLenFeature(dtype=tf.float32),
@@ -23,7 +23,7 @@ def get_next_batch(dir: str, mode='train', type='duration'):
         parsed_example['x'] = tf.sparse_tensor_to_dense(parsed_example['x'])
         parsed_example['y'] = tf.sparse_tensor_to_dense(parsed_example['y'])
         parsed_example['x'] = tf.reshape(parsed_example['x'], parsed_example['x_shape'])
-        parsed_example['y'] = tf.reshape(parsed_example['x'], parsed_example['y_shape'])
+        parsed_example['y'] = tf.reshape(parsed_example['y'], parsed_example['y_shape'])
         return parsed_example
     total_tf = glob.glob(f'{dir}/*.tfrecord')
     tf_files = []
@@ -152,12 +152,14 @@ def gru(inputs,
             return outputs
 
 def bn(inputs,
+       axis=-1,
        is_training=True,
        activation_fn=None,
        scope='bn',
        reuse=None):
     '''
     :param inputs: A 3-D tensor. [N, T, D]. (By default axis=-1)
+    :param axis: An integer. Do normalization in axis.
     :param is_training: Boolean.
     :param activation_fn: TF activation function or None.
     :param scope: String. Scope name.
@@ -165,7 +167,7 @@ def bn(inputs,
     :return: A 3-D tensor. [N, T, D].
     '''
     with tf.variable_scope(scope, reuse=reuse):
-        outputs = tf.layers.batch_normalization(inputs, is_training)
+        outputs = tf.layers.batch_normalization(inputs, axis=axis, training=is_training)
         if activation_fn != None:
             outputs = activation_fn(outputs)
         return outputs
@@ -227,9 +229,9 @@ def acoustic_model(inputs, size: int, is_training=True, scope='acoustic', reuse=
         outputs = conv1d_banks(prenet_outputs, hp.SYN_K, hp.SYN_IN_DIM//2, is_training, scope='conv1d_banks')
         outputs = tf.layers.max_pooling1d(outputs, pool_size=2, strides=1, padding='SAME')
         outputs = conv1d(outputs, hp.SYN_IN_DIM//2, kernel_size=3, scope='fixed_conv1d_1')
-        outputs = bn(outputs, is_training, scope='fixed_bn_1')
+        outputs = bn(outputs, axis=-1, is_training=is_training, scope='fixed_bn_1')
         outputs = conv1d(outputs, hp.SYN_IN_DIM//2, kernel_size=3, scope="fixed_conv1d_2")
-        outputs = bn(outputs, is_training, scope='fixed_bn_2')
+        outputs = bn(outputs, axis=-1, is_training=is_training, scope='fixed_bn_2')
         outputs += prenet_outputs
         for i in range(hp.SYN_HIAHWAY_BLOCK):
             outputs = highway(outputs, num_units=hp.SYN_IN_DIM//2, scope=f'highwaynet_{i}')

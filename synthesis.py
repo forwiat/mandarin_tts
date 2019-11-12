@@ -2,6 +2,7 @@ import os
 import numpy as np
 import pyworld
 import librosa
+import tensorflow as tf
 from duration_model import Duration_Graph
 from acoustic_model import Acoustic_Graph
 from MTTS.mandarin_frontend import txt2label
@@ -57,22 +58,30 @@ def handle(sent, fpath):
     dur_min_vec, dur_max_vec = get_norm_vec(os.path.join(hp.DATA_DIR, 'dur_minmax_vec.npy'), hp.DUR_LAB_DIM)
     dur_in_norm = mmn(inputs=dur_in, min_vec=dur_min_vec, max_vec=dur_max_vec, dimension=hp.DUR_LAB_DIM)
     dur_net = Duration_Graph(mode='infer')
+    dur_in_norm = np.reshape(dur_in_norm, [1, -1, hp.DUR_IN_DIM])
     duration = dur_net.infer(dur_in_norm)
+    duration = np.reshape(duration, [-1, hp.DUR_OUT_DIM])
     dur_mean_vec, dur_std_vec = get_norm_vec(os.path.join(hp.DATA_DIR, 'dur_meanstd_vec.npy'), hp.DURATION_DIM)
     duration_features = demvn(duration, dur_mean_vec, dur_std_vec, dimension=hp.DURATION_DIM)
     syn_in = extend_labels(dur_in, duration_features)
     syn_min_vec, syn_max_vec = get_norm_vec(os.path.join(hp.DATA_DIR, 'syn_minmax_vec.npy'), hp.SYN_LAB_DIM)
     syn_in_norm = mmn(inputs=syn_in, min_vec=syn_min_vec, max_vec=syn_max_vec, dimension=hp.SYN_LAB_DIM)
     syn_net = Acoustic_Graph(mode='infer')
+    syn_in_norm = np.reshape(syn_in_norm, [1, -1, hp.SYN_IN_DIM])
     acoustic = syn_net.infer(syn_in_norm)
+    acoustic = np.reshape(acoustic, [-1, hp.SYN_OUT_DIM])
     syn_mean_vec, syn_std_vec = get_norm_vec(os.path.join(hp.DATA_DIR, 'syn_meanstd_vec.npy'), hp.ACOUSTIC_DIM)
     acoustic_features = demvn(acoustic, syn_mean_vec, syn_std_vec, dimension=hp.ACOUSTIC_DIM)
     index = 0
     f0_features = acoustic_features[:, index: index + hp.F0_DIM]
+    f0_features = np.reshape(f0_features, (-1))
     index += hp.F0_DIM * 3
     coded_sp_features = acoustic_features[:, index: index + hp.CODED_SP_DIM]
     index += hp.CODED_SP_DIM * 3
     coded_ap_features = acoustic_features[:, index: index + hp.CODED_AP_DIM]
+    f0_features = np.array(f0_features, dtype=np.float64)
+    coded_sp_features = np.array(coded_sp_features, dtype=np.float64)
+    coded_ap_features = np.array(coded_ap_features, dtype=np.float64)
     decoded_sp_features = pyworld.decode_spectral_envelope(coded_sp_features, hp.SR, fft_size=hp.N_FFT)
     decoded_ap_features = pyworld.decode_aperiodicity(coded_ap_features, hp.SR, fft_size=hp.N_FFT)
     new_y = pyworld.synthesize(f0_features, decoded_sp_features, decoded_ap_features, hp.SR)
