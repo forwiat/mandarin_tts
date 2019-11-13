@@ -60,8 +60,8 @@ class hyperparams:
         self.SYN_LR = 0.001
         self.SYN_LR_DECAY_STEPS = 200
         self.SYN_LR_DECAY_RATE = 0.5
-        self.SYN_K = 16
-        self.SYN_HIAHWAY_BLOCK = 4
+        self.SYN_K = 8
+        self.SYN_HIAHWAY_BLOCK = 2
         self.SYN_PER_STEPS = 100
         #################################################
 

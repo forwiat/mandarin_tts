@@ -22,7 +22,7 @@ class Acoustic_Graph:
             self.sess = tf.Session(config=tf.ConfigProto(gpu_options=self.gpu_options, allow_soft_placement=True))
             self.writer = tf.summary.FileWriter(hp.SYN_LOG_DIR, self.sess.graph)
             tf.summary.scalar('{}/loss'.format(self.mode), self.loss)
-            tf.summary.scalar('{}/loss'.format(self.mode), self.lr)
+            tf.summary.scalar('{}/lr'.format(self.mode), self.lr)
             self.merged = tf.summary.merge_all()
             print(f'#-------------------------Try to load trainded model in {hp.SYN_MODEL_DIR} ...-------------------------#')
             if tf.train.latest_checkpoint(hp.SYN_MODEL_DIR) != None:

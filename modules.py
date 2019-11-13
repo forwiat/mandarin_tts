@@ -53,7 +53,7 @@ def get_next_batch(dir: str, mode='train', type='duration'):
             'y_shape': [None]
         }
     )
-    shuffled_dataset = batched_dataset.shuffle(buffer_size=bn*2)
+    shuffled_dataset = batched_dataset.shuffle(buffer_size=bn)
     epoched_dataset = shuffled_dataset.repeat(num_epoch)
     iterator = epoched_dataset.make_one_shot_iterator()
     next_element = iterator.get_next()

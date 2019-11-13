@@ -202,9 +202,12 @@ def write_tf(args):
         synout = read_file(os.path.join(hp.TEMP_DIR, fname_noexc + '_out.syn'), dimension=hp.ACOUSTIC_DIM)
         if durin.shape[0] != durout.shape[0]:
             raise Exception('Duration data 1st dimension of inputs and outputs mismatched. Please check.')
-        if synin.shape[0] != synout.shape[0]:
+        if synin.shape[0] < synout.shape[0]:
             diff = synout.shape[0] - synin.shape[0]
             synout = synout[diff:, :]
+        elif synin.shape[0] > synout.shape[0]:
+            diff = synin.shape[0] - synout.shape[0]
+            synin = synin[diff:, :]
         if synin.shape[0] != synout.shape[0]:
             raise Exception('Acoustic data 1st dimension of inputs and outputs mismatched. Please check.')
         dur_features = {}
